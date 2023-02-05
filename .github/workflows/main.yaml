@@ -1,0 +1,82 @@
+name: Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release Version
+        required: true
+      git-ref:
+        description: Git Ref (Optional)
+        required: false
+
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_ID }}
+          aws-region: ap-south-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      # Versioning Strategy : ${MAJOR.MINOR.PATCH} ---- FOLLOW THIS ON EVERY PUSH
+      - name: Build, Tag & Push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.event.inputs.version }}
+        run: |
+          docker build --file .docker/Dockerfile -t $ECR_REGISTRY/flam-zingcam-prod:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/flam-zingcam-prod:$IMAGE_TAG
+
+  Deploy:
+    runs-on: ubuntu-latest
+    needs: ['Build']
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_ID }}
+          aws-region: ap-south-1
+
+      - uses: benjlevesque/short-sha@v1.2
+        id: short-sha
+        with:
+          length: 6
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Populate Variables in Task Definition
+        uses: nowactions/envsubst@v1
+        with:
+          input: ./.aws/ECS/prod.json
+          output: ./task-definition.json
+        env:
+          IMAGE: ${{ steps.login-ecr.outputs.registry }}/flam-zingcam-prod:${{ github.event.inputs.version }}
+          VERSION: ${{ github.event.inputs.version }}
+          GITHUB_REF: ${GITHUB_REF}
+          GITHUB_RUN_NUMBER: ${GITHUB_RUN_NUMBER}
+          GITHUB_SHA: ${GITHUB_SHA}
+          GITHUB_ACTION_REPOSITORY: ${GITHUB_ACTION_REPOSITORY}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          service: flam-zingcam
+          cluster: flam-cards-prod
+          wait-for-service-stability: true

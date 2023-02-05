@@ -6,6 +6,8 @@
 .pnp.js
 sample.html
 .env
+/src/api.js
+/src/scrap.js
 
 
 # production

@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import resultRouter from "./routes/rank.js";
+import collegeRouter from "./routes/college.js"
 
 
 const app = express();
@@ -15,7 +16,8 @@ app.use(express.urlencoded({limit: "50mb", extended: true}));
 app.use(cors());
 
 
-app.use('/', resultRouter);
+app.use('/rank', resultRouter);
+app.use('/',collegeRouter)
 
 
 const PORT = process.env.PORT || 5000;

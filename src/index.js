@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import resultRouter from "./routes/rank.js";
 import collegeRouter from "./routes/college.js"
+import listRouter from "./routes/list.js"
 
 
 const app = express();
@@ -17,7 +18,9 @@ app.use(cors());
 
 
 app.use('/rank', resultRouter);
-app.use('/',collegeRouter)
+app.use('/',collegeRouter);
+app.use('/',listRouter);
+
 
 
 const PORT = process.env.PORT || 5000;

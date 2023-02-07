@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import resultModel from "../model/result.js";
 
 
@@ -15,7 +14,7 @@ export const getRank = async (req, res) => {
 }
 
 export const getRankById = async (req, res) => {
-    let student, rank;
+    let student, rank, allStudent;
     const { reg_no } = req.params;
     const { college, branch } = req.query
     if (reg_no.length !== 11) {
@@ -37,10 +36,16 @@ export const getRankById = async (req, res) => {
     if (student && college !== undefined && branch === undefined) {
         console.log("here1");
         if (student && student.college_code !== parseInt(college)) {
-            return res.status(400).json({ message: "Student in not of given college or branch" })
+            return res.status(400).json({ message: "Student is not of given college or branch" })
         }
 
-        let allStudent = await resultModel.find({ college_code: college, _id: { $ne: student._id } });
+        try {
+            allStudent = await resultModel.find({ college_code: college, _id: { $ne: student._id } });
+        }
+        catch (err) {
+            console.log(err)
+            return res.status(500).json({ message: "Internal Server Error" })
+        }
 
 
         const sortedResults = allStudent.sort((a, b) => b.cgpa - a.cgpa);
@@ -79,8 +84,13 @@ export const getRankById = async (req, res) => {
             return res.status(400).json({ message: "Student in not of given college or branch" })
         }
 
-        let allStudent = await resultModel.find({ college_code: college, branch_code: branch, _id: { $ne: student._id } });
-
+        try {
+            allStudent = await resultModel.find({ college_code: college, branch_code: branch, _id: { $ne: student._id } });
+        }
+        catch (err) {
+            console.log(err)
+            return res.status(500).json({ message: "Internal Server Error" })
+        }
 
         const sortedResults = allStudent.sort((a, b) => b.cgpa - a.cgpa);
 
